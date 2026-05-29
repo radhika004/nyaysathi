@@ -19,6 +19,7 @@ backend_data/
 !tsconfig.json
 !components.json
 !package-lock.json
+!src/**/*.json
 
 # Local env files
 .env*.local

@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-legal",
+      "description": "Abstract legal background with scales of justice",
+      "imageUrl": "https://picsum.photos/seed/nyay-hero/1920/1080",
+      "imageHint": "legal justice"
+    },
+    {
+      "id": "lawyer-1",
+      "description": "Professional lawyer headshot",
+      "imageUrl": "https://picsum.photos/seed/lawyer1/400/400",
+      "imageHint": "lawyer portrait"
+    },
+    {
+      "id": "lawyer-2",
+      "description": "Professional lawyer headshot",
+      "imageUrl": "https://picsum.photos/seed/lawyer2/400/400",
+      "imageHint": "professional female"
+    },
+    {
+      "id": "lawyer-3",
+      "description": "Professional lawyer headshot",
+      "imageUrl": "https://picsum.photos/seed/lawyer3/400/400",
+      "imageHint": "legal professional"
+    }
+  ]
+}
