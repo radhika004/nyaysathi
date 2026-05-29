@@ -23,7 +23,7 @@ except ImportError:
     pass  # dotenv not installed, use system env vars (production)
 
 # --- CONFIGURATION ---
-CHROMA_PATH = os.getenv("CHROMA_PATH", os.path.abspath("./chroma_db"))
+CHROMA_PATH = os.getenv("CHROMA_PATH", "/app/chroma_db")
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 MONGO_DB_NAME = os.getenv("MONGODB_DB", "Legal_AI")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -171,7 +171,13 @@ def _now():
 # --- RAG LOGIC ---
 try:
     import chromadb
+    print(f"Attempting to load ChromaDB from: {CHROMA_PATH}")
+    print(f"Path exists: {os.path.exists(CHROMA_PATH)}")
+    if os.path.exists(CHROMA_PATH):
+        print(f"Files in chroma_db: {os.listdir(CHROMA_PATH)}")
     CHROMA_CLIENT = chromadb.PersistentClient(path=CHROMA_PATH)
+    collections = CHROMA_CLIENT.list_collections()
+    print(f"Available collections: {[c.name for c in collections]}")
     COLLECTION = CHROMA_CLIENT.get_collection("law_sections")
     print(f"ChromaDB loaded successfully from {CHROMA_PATH}")
 except Exception as e:

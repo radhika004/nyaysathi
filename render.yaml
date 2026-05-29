@@ -14,7 +14,7 @@ services:
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
       - key: CHROMA_PATH
-        value: ./chroma_db
+        value: /app/chroma_db
       - key: FRONTEND_URL
         sync: false
       - key: PORT
