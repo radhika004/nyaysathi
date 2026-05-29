@@ -36,12 +36,7 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- DATABASE SETUP ---
 try:
-    mongo_client = MongoClient(
-        MONGO_URI,
-        tls=True,
-        tlsAllowInvalidCertificates=True,
-        serverSelectionTimeoutMS=30000
-    )
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=30000)
     mongo_db = mongo_client[MONGO_DB_NAME]
     users_collection = mongo_db["users"]
     lawyers_collection = mongo_db["lawyers"]
