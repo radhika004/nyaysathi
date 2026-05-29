@@ -122,15 +122,12 @@ allowed_origins = [
     "http://127.0.0.1:3000",
 ]
 if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
-    allowed_origins.append(FRONTEND_URL)
-    if FRONTEND_URL.endswith("/"):
-        allowed_origins.append(FRONTEND_URL.rstrip("/"))
-    else:
-        allowed_origins.append(FRONTEND_URL + "/")
+    allowed_origins.append(FRONTEND_URL.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.(vercel\.app|onrender\.com)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
