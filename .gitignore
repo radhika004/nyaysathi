@@ -1,0 +1,34 @@
+# Next.js
+.next/
+out/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+backend/venv/
+.env
+backend/__pycache__/
+
+# Legal Data (Large) - DO NOT ignore backend/chroma_db, it's needed for deployment
+backend_data/
+*.json
+!package.json
+!tsconfig.json
+!components.json
+!package-lock.json
+
+# Local env files
+.env*.local
+.env.production
+!.env.example
+!backend/.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Audio outputs
+*.mp3
