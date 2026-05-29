@@ -14,7 +14,7 @@ from uuid import uuid4
 from pymongo import MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from groq import Groq
-import sqlite3
+import ssl as _ssl
 
 # Load .env file for local development
 try:
@@ -38,7 +38,8 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 try:
     mongo_client = MongoClient(
         MONGO_URI,
-        tlsInsecure=True,
+        ssl=True,
+        ssl_cert_reqs=_ssl.CERT_NONE,
         serverSelectionTimeoutMS=30000
     )
     mongo_db = mongo_client[MONGO_DB_NAME]
