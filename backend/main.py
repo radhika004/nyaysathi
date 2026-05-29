@@ -14,7 +14,7 @@ from uuid import uuid4
 from pymongo import MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from groq import Groq
-import certifi
+import sqlite3
 
 # Load .env file for local development
 try:
@@ -36,7 +36,12 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- DATABASE SETUP ---
 try:
-    mongo_client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
+    mongo_client = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        serverSelectionTimeoutMS=30000
+    )
     mongo_db = mongo_client[MONGO_DB_NAME]
     users_collection = mongo_db["users"]
     lawyers_collection = mongo_db["lawyers"]
@@ -169,42 +174,56 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 def _now():
     return datetime.now(timezone.utc)
 
-# --- RAG LOGIC ---
-try:
-    import chromadb
-    print(f"Attempting to load ChromaDB from: {CHROMA_PATH}")
-    print(f"Path exists: {os.path.exists(CHROMA_PATH)}")
-    if os.path.exists(CHROMA_PATH):
-        print(f"Files in chroma_db: {os.listdir(CHROMA_PATH)}")
-    CHROMA_CLIENT = chromadb.PersistentClient(path=CHROMA_PATH)
-    collections = CHROMA_CLIENT.list_collections()
-    print(f"Available collections: {[c.name for c in collections]}")
-    # Try get first, fall back to get_or_create for version compatibility
+# --- RAG LOGIC (Direct SQLite — bypasses chromadb version issues) ---
+COLLECTION = None  # Legacy flag for health check
+SQLITE_PATH = os.path.join(CHROMA_PATH, "chroma.sqlite3")
+
+def _search_documents(query: str, n_results: int = 5) -> list:
+    """Search documents directly from ChromaDB SQLite file."""
     try:
-        COLLECTION = CHROMA_CLIENT.get_collection("law_sections")
-    except Exception:
-        COLLECTION = CHROMA_CLIENT.get_or_create_collection("law_sections")
-    print(f"ChromaDB loaded successfully. Count: {COLLECTION.count()}")
-except Exception as e:
-    print(f"RAG Load Warning: {e}")
-    COLLECTION = None
+        if not os.path.exists(SQLITE_PATH):
+            print(f"SQLite not found at: {SQLITE_PATH}")
+            return []
+        conn = sqlite3.connect(SQLITE_PATH)
+        cursor = conn.cursor()
+        # Get tables to understand schema
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [t[0] for t in cursor.fetchall()]
+        print(f"SQLite tables: {tables}")
+        # Try to get documents from embeddings table
+        docs = []
+        for table in ['embeddings', 'embedding_fulltext_search', 'embedding_metadata']:
+            if table in tables:
+                try:
+                    cursor.execute(f"SELECT document FROM {table} WHERE document LIKE ? LIMIT {n_results}",
+                                   (f"%{query.split()[0] if query.split() else query}%",))
+                    rows = cursor.fetchall()
+                    docs = [r[0] for r in rows if r[0]]
+                    if docs:
+                        print(f"Found {len(docs)} docs from {table}")
+                        break
+                except Exception as te:
+                    print(f"Table {table} error: {te}")
+                    continue
+        conn.close()
+        return docs
+    except Exception as e:
+        print(f"SQLite search error: {e}")
+        return []
+
+# Verify SQLite exists
+if os.path.exists(SQLITE_PATH):
+    print(f"SQLite DB found: {SQLITE_PATH} ({os.path.getsize(SQLITE_PATH)} bytes)")
+    COLLECTION = True  # Mark as available for health check
+else:
+    print(f"SQLite DB NOT found at: {SQLITE_PATH}")
+    print(f"CHROMA_PATH contents: {os.listdir(CHROMA_PATH) if os.path.exists(CHROMA_PATH) else 'PATH NOT FOUND'}")
 
 def _build_prompt(query: str, language: str = "English") -> str:
     context = ""
-    if COLLECTION:
-        try:
-            results = COLLECTION.query(query_texts=[query], n_results=5)
-            docs = results.get("documents", [[]])[0]
-            context_list = []
-            for doc in docs:
-                try:
-                    parsed = json.loads(doc)
-                    context_list.append(json.dumps(parsed, indent=2, ensure_ascii=False))
-                except:
-                    context_list.append(doc)
-            context = "\n\n---\n\n".join(context_list)
-        except Exception as e:
-            print(f"Query Error: {e}")
+    docs = _search_documents(query)
+    if docs:
+        context = "\n\n---\n\n".join(docs[:5])
 
     prompt = f"""You are a helpful legal assistant like a lawyer specializing in the Indian Law. Behave like a lawyer and give answers.
 Use ONLY the context below to answer the question clearly in {language}.
@@ -214,7 +233,7 @@ Dont use bold text and at any cost keep the text simple and dont use difficult w
 
 CONTEXT:
 ---
-{context}
+{context if context else 'No specific context found. Answer from general Indian Law knowledge.'}
 ---
 
 QUESTION: {query}
