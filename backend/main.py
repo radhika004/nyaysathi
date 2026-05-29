@@ -35,6 +35,11 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:9002")
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- DATABASE SETUP ---
+# Pre-initialize as None — prevents NameError if MongoDB is down
+users_collection = None
+lawyers_collection = None
+chat_sessions_collection = None
+
 try:
     mongo_client = MongoClient(
         MONGO_URI,
@@ -51,6 +56,7 @@ try:
     lawyers_collection.create_index("email", unique=True)
     chat_sessions_collection.create_index("owner_email")
     chat_sessions_collection.create_index("session_id", unique=True)
+    print("MongoDB connected successfully!")
 except Exception as e:
     print(f"MongoDB Connection Warning: {e}")
 
@@ -120,12 +126,25 @@ class ChatSessionDetail(BaseModel):
 # --- APP SETUP ---
 app = FastAPI(title="NyaySathi AI Legal API")
 
+# Global exception handler — ensures CORS headers are present even on 500 errors
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
 # Build CORS origins list
 allowed_origins = [
     "http://localhost:9002",
     "http://localhost:3000",
     "http://127.0.0.1:9002",
     "http://127.0.0.1:3000",
+    "https://nyaysathi-brown.vercel.app",
+    "https://nyaysathi-hybalvlx7-radhika004s-projects.vercel.app",
 ]
 if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
     allowed_origins.append(FRONTEND_URL.rstrip("/"))
@@ -264,6 +283,8 @@ def health_check():
 # --- AUTH ENDPOINTS ---
 @app.post("/auth/signup", response_model=TokenResponse)
 def signup(body: SignupRequest):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable. Please try again later.")
     email = body.email.lower().strip()
     hashed, salt = _hash_password(body.password)
     token = _generate_token()
@@ -281,7 +302,9 @@ def signup(body: SignupRequest):
         })
     except DuplicateKeyError:
         raise HTTPException(status_code=400, detail="Email already exists")
-    if body.role == "lawyer":
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+    if body.role == "lawyer" and lawyers_collection is not None:
         lawyers_collection.update_one(
             {"email": email},
             {"$set": {
@@ -297,8 +320,13 @@ def signup(body: SignupRequest):
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(body: LoginRequest):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable. Please try again later.")
     email = body.email.lower().strip()
-    user = users_collection.find_one({"email": email})
+    try:
+        user = users_collection.find_one({"email": email})
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     password_valid = False
