@@ -41,12 +41,12 @@ lawyers_collection = None
 chat_sessions_collection = None
 
 try:
-    mongo_client = MongoClient(
-        MONGO_URI,
-        ssl=True,
-        ssl_cert_reqs=_ssl.CERT_NONE,
-        serverSelectionTimeoutMS=30000
-    )
+    # Only use SSL for Atlas (mongodb+srv://), not for Railway plain TCP
+    client_kwargs: dict = {"serverSelectionTimeoutMS": 30000}
+    if MONGO_URI.startswith("mongodb+srv://"):
+        client_kwargs["ssl"] = True
+        client_kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
+    mongo_client = MongoClient(MONGO_URI, **client_kwargs)
     mongo_db = mongo_client[MONGO_DB_NAME]
     users_collection = mongo_db["users"]
     lawyers_collection = mongo_db["lawyers"]
