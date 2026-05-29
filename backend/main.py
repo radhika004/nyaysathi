@@ -14,6 +14,7 @@ from uuid import uuid4
 from pymongo import MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from groq import Groq
+import certifi
 
 # Load .env file for local development
 try:
@@ -35,7 +36,7 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- DATABASE SETUP ---
 try:
-    mongo_client = MongoClient(MONGO_URI)
+    mongo_client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
     mongo_db = mongo_client[MONGO_DB_NAME]
     users_collection = mongo_db["users"]
     lawyers_collection = mongo_db["lawyers"]
@@ -178,8 +179,12 @@ try:
     CHROMA_CLIENT = chromadb.PersistentClient(path=CHROMA_PATH)
     collections = CHROMA_CLIENT.list_collections()
     print(f"Available collections: {[c.name for c in collections]}")
-    COLLECTION = CHROMA_CLIENT.get_collection("law_sections")
-    print(f"ChromaDB loaded successfully from {CHROMA_PATH}")
+    # Try get first, fall back to get_or_create for version compatibility
+    try:
+        COLLECTION = CHROMA_CLIENT.get_collection("law_sections")
+    except Exception:
+        COLLECTION = CHROMA_CLIENT.get_or_create_collection("law_sections")
+    print(f"ChromaDB loaded successfully. Count: {COLLECTION.count()}")
 except Exception as e:
     print(f"RAG Load Warning: {e}")
     COLLECTION = None

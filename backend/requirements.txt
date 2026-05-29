@@ -1,7 +1,8 @@
 fastapi==0.115.6
 uvicorn==0.34.0
 pymongo==4.10.1
-chromadb==0.5.23
+certifi==2024.12.14
+chromadb==0.4.24
 groq==0.15.0
 deep-translator==1.11.4
 gTTS==2.5.4
