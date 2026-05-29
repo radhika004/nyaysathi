@@ -69,8 +69,8 @@ export function AuthModals({ isOpen, onOpenChange, defaultView = 'login' }: Auth
       await login(formData.email, formData.password);
       onOpenChange(false);
       router.push('/dashboard');
-    } catch (e) {
-      alert("Login failed. Check your credentials.");
+    } catch (e: any) {
+      alert(e?.message || "Login failed. Check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -83,8 +83,8 @@ export function AuthModals({ isOpen, onOpenChange, defaultView = 'login' }: Auth
       await signup(formData);
       onOpenChange(false);
       router.push('/dashboard');
-    } catch (e) {
-      alert("Signup failed. Email might already be registered.");
+    } catch (e: any) {
+      alert(e?.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
