@@ -1,6 +1,6 @@
 # NyaySathi | AI-Powered Legal Assistant
 
-This project is an AI-powered legal assistant focused on the Indian Code of Criminal Procedure (CrPC), featuring a Next.js frontend and a FastAPI/MongoDB/ChromaDB backend.
+This project is an AI-powered legal assistant focused on the Indian Law, featuring a Next.js frontend and a FastAPI/MongoDB/ChromaDB backend.
 
 ## 🚀 How to get this on GitHub
 
